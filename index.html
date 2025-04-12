@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Disparando ❤️ con Sandreke</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background-color: #111;
+      font-family: sans-serif;
+      text-align: center;
+      color: white;
+    }
+
+    canvas {
+      background: black;
+      max-width: 100%;
+      height: auto;
+    }
+
+    #mobileControls {
+      display: none;
+      margin: 10px 0;
+    }
+
+    #mobileControls .control-btn {
+      font-size: 30px;
+      padding: 10px 20px;
+      margin: 5px;
+    }
+
+    @media (max-width: 768px) {
+      #mobileControls {
+        display: block;
+      }
+    }
+
+    button {
+      font-size: 18px;
+      padding: 10px 20px;
+      margin: 10px;
+      cursor: pointer;
+    }
+
+    .particle {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      background: pink;
+      border-radius: 50%;
+      pointer-events: none;
+      animation: pop 0.5s ease-out forwards;
+    }
+
+    @keyframes pop {
+      to {
+        transform: scale(2);
+        opacity: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Disparando ❤️ con Sandreke</h1>
+
+  <button id="startBtn">Comenzar</button>
+
+  <canvas id="gameCanvas" width="700" height="775" style="display:none;"></canvas>
+
+  <div id="scoreDisplay" style="display:none;">
+    Puntos: <span id="score">0</span> | 🏆 Récord: <span id="highScore">0</span>
+  </div>
+
+  <div id="mobileControls">
+    <button class="control-btn" ontouchstart="player.moveLeft = true" ontouchend="player.moveLeft = false">⬅️</button>
+    <button class="control-btn" ontouchstart="player.moveRight = true" ontouchend="player.moveRight = false">➡️</button>
+    <button class="control-btn" ontouchstart="shootBullet()">🔫</button>
+  </div>
+
+  <button id="restartBtn" style="display:none;">Reiniciar</button>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    const startBtn = document.getElementById("startBtn");
+    const restartBtn = document.getElementById("restartBtn");
+    const scoreSpan = document.getElementById("score");
+    const highScoreSpan = document.getElementById("highScore");
+
+    const WIDTH = canvas.width;
+    const HEIGHT = canvas.height;
+
+    const playerImg = new Image();
+    playerImg.src = "imgs/mio.png";
+
+    const bulletImg = new Image();
+    bulletImg.src = "imgs/corazón.png";
+
+    const enemyImg = new Image();
+    enemyImg.src = "imgs/mica.png";
+
+    const bgImg = new Image();
+    bgImg.src = "imgs/fondo_amor.jpg";
+
+    const player = {
+      x: WIDTH / 2 - 30,
+      y: HEIGHT - 70,
+      width: 60,
+      height: 60,
+      speed: 7,
+      moveLeft: false,
+      moveRight: false
+    };
+
+    let bullets = [];
+    let enemies = [];
+    let score = 0;
+    let highScore = localStorage.getItem("highScore") || 0;
+    let gameOver = false;
+
+    highScoreSpan.textContent = highScore;
+
+    document.addEventListener("keydown", e => {
+      if (e.key === "ArrowLeft") player.moveLeft = true;
+      if (e.key === "ArrowRight") player.moveRight = true;
+      if (e.key === " ") shootBullet();
+    });
+
+    document.addEventListener("keyup", e => {
+      if (e.key === "ArrowLeft") player.moveLeft = false;
+      if (e.key === "ArrowRight") player.moveRight = false;
+    });
+
+    function shootBullet() {
+      bullets.push({
+        x: player.x + player.width / 2 - 25,
+        y: player.y,
+        width: 50,
+        height: 50
+      });
+    }
+
+    function spawnEnemy() {
+      const x = Math.random() * (WIDTH - 60);
+      enemies.push({
+        x: x,
+        y: -60,
+        width: 60,
+        height: 60,
+        speed: 1.5 + score * 0.07
+      });
+    }
+
+    function createParticles(x, y) {
+      for (let i = 0; i < 6; i++) {
+        const p = document.createElement("div");
+        p.className = "particle";
+        p.style.left = (canvas.offsetLeft + x) + "px";
+        p.style.top = (canvas.offsetTop + y) + "px";
+        document.body.appendChild(p);
+        setTimeout(() => p.remove(), 500);
+      }
+    }
+
+    function update() {
+      if (gameOver) return;
+
+      if (player.moveLeft && player.x > 0) player.x -= player.speed;
+      if (player.moveRight && player.x + player.width < WIDTH) player.x += player.speed;
+
+      bullets.forEach(b => b.y -= 8);
+      enemies.forEach(e => e.y += e.speed);
+
+      for (let i = bullets.length - 1; i >= 0; i--) {
+        for (let j = enemies.length - 1; j >= 0; j--) {
+          const b = bullets[i], e = enemies[j];
+          if (b.x < e.x + e.width && b.x + b.width > e.x &&
+              b.y < e.y + e.height && b.y + b.height > e.y) {
+            createParticles(e.x + e.width / 2, e.y + e.height / 2);
+            bullets.splice(i, 1);
+            enemies.splice(j, 1);
+            score += 1;
+            scoreSpan.textContent = score;
+            if (score > highScore) {
+              highScore = score;
+              localStorage.setItem("highScore", highScore);
+              highScoreSpan.textContent = highScore;
+            }
+            break;
+          }
+        }
+      }
+
+      for (let e of enemies) {
+        if (player.x < e.x + e.width && player.x + player.width > e.x &&
+            player.y < e.y + e.height && player.y + player.height > e.y) {
+          gameOver = true;
+          restartBtn.style.display = "inline";
+        }
+      }
+
+      if (Math.random() < 0.015 + score * 0.0005) spawnEnemy();
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, WIDTH, HEIGHT);
+      ctx.drawImage(bgImg, 0, 0, WIDTH, HEIGHT);
+      ctx.drawImage(playerImg, player.x, player.y, player.width, player.height);
+      bullets.forEach(b => ctx.drawImage(bulletImg, b.x, b.y, b.width, b.height));
+      enemies.forEach(e => ctx.drawImage(enemyImg, e.x, e.y, e.width, e.height));
+    }
+
+    function gameLoop() {
+      update();
+      draw();
+      if (!gameOver) requestAnimationFrame(gameLoop);
+    }
+
+    startBtn.onclick = () => {
+      startBtn.style.display = "none";
+      canvas.style.display = "block";
+      document.getElementById("scoreDisplay").style.display = "block";
+      gameLoop();
+    };
+
+    restartBtn.onclick = () => {
+      location.reload();
+    };
+  </script>
+</body>
+</html>
